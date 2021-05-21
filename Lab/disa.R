@@ -17,5 +17,22 @@ rm(list = ls())
 
 #---- LOAD DATASET  -------------------------------------------------------
 
-Lab_Monthly_VL_Archive <- read_excel("~/USAID/00. SI/00. HIV/01. M&E/00. Data/10. Lab/00. VL/Lab Monthly VL Archive.xlsx", 
-                                     sheet = "SV (Genero)")
+xIdade <- read_excel("data_source/Lab Monthly VL Archive.xlsx", 
+                     sheet = "SV (Idade)") %>% 
+  dplyr::mutate(analysis_group = "age")
+
+xGenero <- read_excel("data_source/Lab Monthly VL Archive.xlsx", 
+                                     sheet = "SV (Genero)") %>% 
+  dplyr::mutate(analysis_group = "sex")
+
+xGravidas <- read_excel("data_source/Lab Monthly VL Archive.xlsx", 
+                      sheet = "SV (M. Gravidas)") %>% 
+  dplyr::mutate(analysis_group = "pw")
+
+xLactantes <- read_excel("data_source/Lab Monthly VL Archive.xlsx", 
+                      sheet = "SV (M. Lactantes)") %>% 
+  dplyr::mutate(analysis_group = "lw")
+
+TRL <- read_excel("data_source/Lab Monthly VL Archive.xlsx", 
+                      sheet = "TRL")
+
