@@ -15,7 +15,7 @@ library(purrr)
 
 rm(list = ls())
 
-#---- LOAD DATASET  -------------------------------------------------------
+#---- LOAD DATASETS AND UNION -------------------------------------------------------
 
 xIdade <- read_excel("data_source/Lab Monthly VL Archive.xlsx", 
                      sheet = "SV (Idade)") %>% 
@@ -36,3 +36,11 @@ xLactantes <- read_excel("data_source/Lab Monthly VL Archive.xlsx",
 TRL <- read_excel("data_source/Lab Monthly VL Archive.xlsx", 
                       sheet = "TRL")
 
+df <- dplyr::bind_rows(xIdade, xGenero, xGravidas, xLactantes)
+
+#---- RENAME VARIABLES -------------------------------------------------------
+
+df_1 <- df %>% 
+  dplyr::select(-c(`CV < 1000`, `CV > 1000`, TOTAL)) %>%
+  tidyr::pivot_longer(`Rotina (<1000)`:`Motivo de Teste não especificado (>1000)`, names_to = "indicator", values_to = "value")
+  glimpse
