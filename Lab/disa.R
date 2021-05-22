@@ -16,6 +16,8 @@ library(purrr)
 rm(list = ls())
 
 file_monthly <- "data_source/monthly/Relatorio Mensal de Carga Viral (Abril).xlsx"
+month <- "2021-04-20"
+output <- "C:/Users/jlara/Documents/GitHub/Lab/Lab/data_source/monthly_processsed/2021-04.tsv"
 
 #---- LOAD DATASETS AND UNION -------------------------------------------------------
 
@@ -74,5 +76,14 @@ df_1 <- df %>%
   tidyr::pivot_wider(names_from = result, values_from = value, values_fill = NULL) %>%
   dplyr::mutate(suppressed = replace_na(suppressed, 0),
                 non_suppressed = replace_na(non_suppressed, 0),
-                total = suppressed + non_suppressed) %>% 
+                total = suppressed + non_suppressed,
+                month = {month}) %>% 
   glimpse
+
+
+
+readr::write_tsv(
+  df_1,
+  {output},
+  na ="")
+s
