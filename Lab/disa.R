@@ -1,3 +1,4 @@
+
 #------LOAD CORE TIDYVERSE & OTHER PACKAGES-------------------------------------------
 
 library(readr)
@@ -13,6 +14,8 @@ library(glue)
 library(purrr)
 
 rm(list = ls())
+
+#---- DEFINE MONTH AND PATHS -------------------------------------------------------
 
 file_monthly <- "data_source/monthly/Relatorio Mensal de Carga Viral (Abril).xlsx"
 month <- "2021-04-20"
@@ -55,7 +58,6 @@ xLW <- read_excel({file_monthly},
                 DISTRITO = DISTRICT) %>% 
   glimpse
 
-
 df <- dplyr::bind_rows(xAge, xSex, xPW, xLW)
 
 #---- PROCESS DATAFRAME -------------------------------------------------------
@@ -75,31 +77,11 @@ df_1 <- df %>%
                 result = dplyr::case_when(grepl("<1000", indicator) ~ "<1000",
                                           grepl(">1000", indicator) ~ ">1000")) %>% 
   dplyr::select(-c(indicator)) %>% 
-  dplyr::mutate(result = dplyr::recode(result, "<1000" = "suppressed", ">1000" = "non_suppressed")) %>%
-  dplyr::mutate(row = row_number(),
-                month = {month}) %>% 
-  tidyr::pivot_wider(names_from = result, values_from = value, values_fill = NULL) %>% 
   glimpse()
 
-#---- GROUP DATA -------------------------------------------------------
+#---- RECODE AGE/SEX VALUES -----------------------------------------------
 
 df_2 <- df_1 %>% 
-  group_by(month, province, district, site, age, group, sex, motive) %>%
-  summarize(suppressed = sum(suppressed, na.rm = TRUE),
-            non_suppressed = sum(non_suppressed, na.rm = TRUE)) %>%
-  ungroup()
-
-#---- CALCULATE TOTAL VL TESTS ------------------------------------------
-
-df_3 <- df_2 %>%
-  dplyr::mutate(suppressed = replace_na(suppressed, 0),
-                non_suppressed = replace_na(non_suppressed, 0),
-                total = suppressed + non_suppressed) %>% 
-  glimpse
-
-#---- LAST RECODE -------------------------------------------------------
-
-df_4 <- df_3 %>% 
   dplyr::mutate(age = dplyr::na_if(age, "Idade não especificada"),
                 age = dplyr::na_if(age, "No Age Specified"),
                 age = dplyr::na_if(age, "Não especificada"),
@@ -110,13 +92,15 @@ df_4 <- df_3 %>%
 
 #---- FILTER LINES ONLY >0 -----------------------------------------------
 
-df_5 <- df_4 %>% 
-  dplyr::filter(total > 0)
+df_3 <- df_2 %>% 
+  dplyr::filter(value > 0) %>% 
+  dplyr::mutate(indicator = "VL",
+                month = {month})
 
 #------ WRITE FILE TO DISK -------------------------------------------
 
 readr::write_tsv(
-  df_5,
+  df_3,
   {month_output},
   na ="")
 
