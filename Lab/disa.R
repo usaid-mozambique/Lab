@@ -82,13 +82,17 @@ df_1 <- df %>%
 #---- RECODE AGE/SEX VALUES -----------------------------------------------
 
 df_2 <- df_1 %>% 
-  dplyr::mutate(age = dplyr::na_if(age, "Idade não especificada"),
-                age = dplyr::na_if(age, "No Age Specified"),
-                age = dplyr::na_if(age, "Não especificada"),
+  dplyr::mutate(age = dplyr::recode(age, "Idade não especificada" = "Unknown"),
+                age = dplyr::recode(age, "No Age Specified" = "Unknown"),
+                age = dplyr::recode(age, "Não especificada" = "Unknown"),
+                age = tidyr::replace_na(age, "Unknown"),
                 
-                sex = dplyr::na_if(sex, "UNKNOWN"),
-                sex = dplyr::na_if(sex, "Not Specified"),
-                sex = dplyr::na_if(sex, "Não especificado"))
+                sex = dplyr::recode(sex, "UNKNOWN" = "Unknown"),
+                sex = dplyr::recode(sex, "Not Specified" = "Unknown"),
+                sex = dplyr::recode(sex, "Não especificado" = "Unknown"),
+                sex = dplyr::recode(sex, "F" = "Female"),
+                sex = dplyr::recode(sex, "M" = "Male"),
+                sex = tidyr::replace_na(sex, "Unknown"))
 
 #---- FILTER LINES ONLY >0 -----------------------------------------------
 
@@ -104,15 +108,33 @@ readr::write_tsv(
   {month_output},
   na ="")
 
+rm(df, df_1, df_2, df_3, xAge, xLW, xPW, xSex)
+
 #---- DEFINE PATH AND SURVEY ALL MONTHLY TPT DATASETS THAT NEED TO BE COMBINED FOR HISTORIC DATASET ---------------------------------
 
 historic_files <- dir({historic_files_path}, pattern = "*.tsv")  # PATH FOR PURR TO FIND MONTHLY FILES TO COMPILE
 
 #---- ROW BIND ALL MONTHS -----------------------
 
-disa <- historic_files %>%
+disa_vl <- historic_files %>%
   map(~ read_tsv(file.path(compile_path, .))) %>% 
   reduce(rbind)
+
+#---- SUBSET VLS DATASET AND MAKE INDEPENDENT INDICATOR -------------
+
+disa_vls <- disa_vl %>% 
+  dplyr::filter(result == "<1000") %>% 
+  dplyr::mutate(indicator = "VLS")
+
+#---- UNION VL & VLS DATAFRAMES, PIVOT WIDER AND GROUP ----------------
+
+disa <- dplyr::bind_rows(disa_vl, disa_vls) %>% 
+  dplyr::mutate(row = row_number()) %>% 
+  tidyr::pivot_wider(names_from = indicator, values_from = value, values_fill = NULL) %>% 
+  dplyr::group_by(month, province, district, site, age, group, sex, motive) %>%
+  summarise(VL = sum(VL, na.rm = T),
+            VLS = sum(VLS, na.rm = T)) %>%
+  ungroup()
 
 #------ WRITE FILE TO DISK -------------------------------------------
 
@@ -120,4 +142,8 @@ readr::write_tsv(
   disa,
   {final_output},
   na ="")
+
+
+
+
 

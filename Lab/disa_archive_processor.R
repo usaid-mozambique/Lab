@@ -89,13 +89,17 @@ df_1 <- df %>%
 #---- RECODE AGE/SEX VALUES -----------------------------------------------
 
 df_2 <- df_1 %>% 
-  dplyr::mutate(age = dplyr::na_if(age, "Idade não especificada"),
-                age = dplyr::na_if(age, "No Age Specified"),
-                age = dplyr::na_if(age, "Não especificada"),
+  dplyr::mutate(age = dplyr::recode(age, "Idade não especificada" = "Unknown"),
+                age = dplyr::recode(age, "No Age Specified" = "Unknown"),
+                age = dplyr::recode(age, "Não especificada" = "Unknown"),
+                age = tidyr::replace_na(age, "Unknown"),
                 
-                sex = dplyr::na_if(sex, "UNKNOWN"),
-                sex = dplyr::na_if(sex, "Not Specified"),
-                sex = dplyr::na_if(sex, "Não especificado"))
+                sex = dplyr::recode(sex, "UNKNOWN" = "Unknown"),
+                sex = dplyr::recode(sex, "Not Specified" = "Unknown"),
+                sex = dplyr::recode(sex, "Não especificado" = "Unknown"),
+                sex = dplyr::recode(sex, "F" = "Female"),
+                sex = dplyr::recode(sex, "M" = "Male"),
+                sex = tidyr::replace_na(sex, "Unknown"))
 
 #---- FILTER LINES ONLY >0 -----------------------------------------------
 
