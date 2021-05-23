@@ -14,55 +14,62 @@ library(purrr)
 
 rm(list = ls())
 
-file_monthly <- "data_source/monthly/Relatorio Mensal de Carga Viral (Abril).xlsx"
-month <- "2021-04-20"
-month_output <- "C:/Users/jlara/Documents/GitHub/Lab/Lab/data_source/monthly_processsed/2021_04.tsv"
-final_output <- "C:/Users/jlara/Documents/GitHub/Lab/Lab/output/disa.tsv"
-
-
-historic_files_path <- "C:/Users/jlara/Documents/GitHub/Lab/Lab/data_source/monthly_processsed/"  # PATH USED TO CREATE A LIST OF ALL .CSV FILES PREVIOUSLY CREATED
-compile_path <- "C:/Users/jlara/Documents/GitHub/Lab/Lab/data_source/monthly_processsed/"
+file_monthly <- "data_source/monthly/Lab Monthly VL Archive.xlsx"
+output <- "C:/Users/jlara/Documents/GitHub/Lab/Lab/data_source/monthly_processsed/2020_2021.tsv"
 
 #---- LOAD DATASETS AND UNION -------------------------------------------------------
 
 xAge <- read_excel({file_monthly}, 
-                     sheet = "S. Viral (Idade)", skip = 2) %>% 
+                   sheet = "SV (Idade)") %>% 
   dplyr::mutate(group = "Age") %>%
-  dplyr::select(-c(`SISMA ID`)) %>% 
   glimpse()
 
 xSex <- read_excel({file_monthly}, 
-                     sheet = "S. Viral (Genero)", skip = 2) %>% 
+                   sheet = "SV (Genero)") %>% 
   dplyr::mutate(group = "Sex") %>% 
-  dplyr::select(-c(`SISMA ID`)) %>% 
   glimpse
 
 xPW <- read_excel({file_monthly}, 
-                   sheet = "S. Viral (M. Gravidas)", skip = 2) %>% 
+                  sheet = "SV (M. Gravidas)") %>% 
   dplyr::mutate(group = "PW") %>% 
-  dplyr::select(-c(`SISMA ID`)) %>% 
-  dplyr::rename(US = HF,
-                PROVINCIA = PROVINCE,
-                DISTRITO = DISTRICT) %>% 
   glimpse
 
 xLW <- read_excel({file_monthly}, 
-                   sheet = "S. Viral (M. Lactantes)", skip = 2) %>% 
+                  sheet = "SV (M. Lactantes)") %>% 
   dplyr::mutate(group = "LW") %>%
-  dplyr::select(-c(`SISMA ID`)) %>% 
-  dplyr::rename(US = HF,
-                PROVINCIA = PROVINCE,
-                DISTRITO = DISTRICT) %>% 
   glimpse
 
 
 df <- dplyr::bind_rows(xAge, xSex, xPW, xLW)
 
-#---- PROCESS DATAFRAME -------------------------------------------------------
+#---- MONTHLY RECODE -------------------------------------------------------
 
 df_1 <- df %>% 
+  dplyr::mutate(Data = dplyr::recode(Data, 
+                                     "January, 2020" = "2020-01-20",
+                                     "February, 2020" = "2020-02-20",
+                                     "March, 2020" = "2020-03-20",
+                                     "April, 2020" = "2020-04-20",
+                                     "May, 2020" = "2020-05-20",
+                                     "June, 2020" = "2020-06-20",
+                                     "July, 2020" = "2020-07-20",
+                                     "August, 2020" = "2020-08-20",
+                                     "September, 2020" = "2020-09-20",
+                                     "October, 2020" = "2020-10-20",
+                                     "November, 2020" = "2020-11-20",
+                                     "December, 2020" = "2020-12-20",
+                                     "January, 2021" = "2021-01-20",
+                                     "February, 2021" = "2021-02-20",
+                                     "March, 2021" = "2021-03-20",
+                                     "April, 2021" = "2021-04-20")
+                )
+
+#---- PROCESS DATAFRAME -------------------------------------------------------
+
+df_2 <- df_1 %>% 
   dplyr::select(-c(`CV < 1000`, `CV > 1000`, TOTAL)) %>%
-  dplyr::rename(province = PROVINCIA,
+  dplyr::rename(month = Data,
+                province = PROVINCIA,
                 district = DISTRITO,
                 site = US,
                 age = Idade,
@@ -76,22 +83,21 @@ df_1 <- df %>%
                                           grepl(">1000", indicator) ~ ">1000")) %>% 
   dplyr::select(-c(indicator)) %>% 
   dplyr::mutate(result = dplyr::recode(result, "<1000" = "suppressed", ">1000" = "non_suppressed")) %>%
-  dplyr::mutate(row = row_number(),
-                month = {month}) %>% 
+  dplyr::mutate(row = row_number()) %>% 
   tidyr::pivot_wider(names_from = result, values_from = value, values_fill = NULL) %>% 
   glimpse()
 
 #---- GROUP DATA -------------------------------------------------------
 
-df_2 <- df_1 %>% 
+df_3 <- df_2 %>% 
   group_by(month, province, district, site, age, group, sex, motive) %>%
   summarize(suppressed = sum(suppressed, na.rm = TRUE),
             non_suppressed = sum(non_suppressed, na.rm = TRUE)) %>%
   ungroup()
 
 #---- CALCULATE TOTAL VL TESTS ------------------------------------------
-
-df_3 <- df_2 %>%
+  
+df_4 <- df_3 %>%
   dplyr::mutate(suppressed = replace_na(suppressed, 0),
                 non_suppressed = replace_na(non_suppressed, 0),
                 total = suppressed + non_suppressed) %>% 
@@ -99,7 +105,7 @@ df_3 <- df_2 %>%
 
 #---- LAST RECODE -------------------------------------------------------
 
-df_4 <- df_3 %>% 
+df_5 <- df_4 %>% 
   dplyr::mutate(age = dplyr::na_if(age, "Idade não especificada"),
                 age = dplyr::na_if(age, "No Age Specified"),
                 age = dplyr::na_if(age, "Não especificada"),
@@ -110,30 +116,12 @@ df_4 <- df_3 %>%
 
 #---- FILTER LINES ONLY >0 -----------------------------------------------
 
-df_5 <- df_4 %>% 
+df_6 <- df_5 %>% 
   dplyr::filter(total > 0)
 
 #------ WRITE FILE TO DISK -------------------------------------------
 
 readr::write_tsv(
-  df_5,
-  {month_output},
+  df_6,
+  {output},
   na ="")
-
-#---- DEFINE PATH AND SURVEY ALL MONTHLY TPT DATASETS THAT NEED TO BE COMBINED FOR HISTORIC DATASET ---------------------------------
-
-historic_files <- dir({historic_files_path}, pattern = "*.tsv")  # PATH FOR PURR TO FIND MONTHLY FILES TO COMPILE
-
-#---- ROW BIND ALL MONTHS -----------------------
-
-disa <- historic_files %>%
-  map(~ read_tsv(file.path(compile_path, .))) %>% 
-  reduce(rbind)
-
-#------ WRITE FILE TO DISK -------------------------------------------
-
-readr::write_tsv(
-  disa,
-  {final_output},
-  na ="")
-
