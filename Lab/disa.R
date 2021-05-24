@@ -185,6 +185,8 @@ disa_ajuda <- disa %>%
   
 #------ WRITE FILE TO DISK -------------------------------------------
 
+rm(ajuda_site_map, disa_site_map, disa_vl, disa_vls)
+
 readr::write_tsv(
   disa,
   {final_output},
