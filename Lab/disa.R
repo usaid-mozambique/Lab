@@ -67,8 +67,7 @@ df_tat <- read_excel("data_source/monthly/Relatorio Mensal de Carga Viral (Abril
                                                      sheet = "TRL", skip = 2)
 
 ajuda_site_map <- read_excel("~/GitHub/AjudaSiteMap/AJUDA Site Map.xlsx")
-disa_site_map <- read_excel("~/GitHub/_GeneralJoins/DISA Datim Mapping.xlsx") %>% 
-  dplyr::select(Datim_ID, disa_site)
+disa_site_map <- read_excel("~/GitHub/_GeneralJoins/DISA Datim Mapping.xlsx")
 
 #---- PROCESS VL DATAFRAME -------------------------------------------------------
 
@@ -174,13 +173,12 @@ disa <- dplyr::bind_rows(disa_vl, disa_vls) %>%
 
 disa_ajuda <- disa %>% 
   dplyr::left_join(disa_site_map, c("site" = "disa_site")) %>% 
-  dplyr::left_join(ajuda_site_map, c("Datim_ID" = "orgunituid")) %>% 
-  tidyr::drop_na(Datim_ID) %>% 
+  dplyr::left_join(ajuda_site_map, c("orgunituid" = "orgunituid")) %>% 
+  tidyr::drop_na(orgunituid) %>% 
   dplyr::select(-c(SNU,
                    Psnu,
                    Sitename)) %>% 
-  dplyr::rename(orgunituid = Datim_ID,
-                partner = `IP FY20`,
+  dplyr::rename(partner = `IP FY20`,
                 lat = Lat,
                 long = Long) %>% 
   dplyr::relocate(c(orgunituid, sisma_id, lat, long, partner), .after = site)
