@@ -12,21 +12,23 @@ library(readxl)
 library(openxlsx)
 library(glue)
 library(purrr)
+library(here)
 
 rm(list = ls())
 
 #---- DEFINE PATHS AND VALUES THAT REQUIRE UPDATING EACH MONTH! -------------------------------------------------------
 
-file_monthly <- "data_source/monthly/Relatorio Mensal de Carga Viral (Abril).xlsx"
+file_monthly <- "Data/monthly/Relatorio Mensal de Carga Viral (Abril).xlsx"
 month <- "2021-04-20"
-month_output <- "C:/Users/jlara/Documents/GitHub/Lab/Lab/data_source/monthly_processsed/2021_04.tsv"
+month_output <- "Data/monthly_processsed/2021_04.tsv"
 
 #---- DEFINE PATHS AND VALUES THE DO NOT REQUIRE UPDATING -------------------------------------------------------
 
-final_output <- "C:/Users/jlara/Documents/GitHub/Lab/Lab/output/disa.tsv"
-final_ajuda_output <- "C:/Users/jlara/Documents/GitHub/Lab/Lab/output/disa_ajuda.tsv"
-historic_files_path <- "C:/Users/jlara/Documents/GitHub/Lab/Lab/data_source/monthly_processsed/"  # PATH USED TO CREATE A LIST OF ALL .CSV FILES PREVIOUSLY CREATED
-compile_path <- "C:/Users/jlara/Documents/GitHub/Lab/Lab/data_source/monthly_processsed/"
+final_output <- "Dataout/disa.tsv"
+final_ajuda_output <- "Dataout/disa_ajuda.tsv"
+final_misau_output <- "Dataout/disa_misau.tsv"
+historic_files_path <- "Data/monthly_processsed/"  # PATH USED TO CREATE A LIST OF ALL .CSV FILES PREVIOUSLY CREATED
+compile_path <- "Data/monthly_processsed/"
 
 #---- LOAD DATASETS AND UNION -------------------------------------------------------
 
@@ -60,13 +62,14 @@ xLW <- read_excel({file_monthly},
                 DISTRITO = DISTRICT) %>% 
   glimpse
 
+df_tat <- read_excel({file_monthly},
+                     sheet = "TRL", skip = 2)
+
 df_vl <- dplyr::bind_rows(xAge, xSex, xPW, xLW)
+
 rm(xAge, xSex, xPW, xLW)
 
-df_tat <- read_excel("data_source/monthly/Relatorio Mensal de Carga Viral (Abril).xlsx", 
-                                                     sheet = "TRL", skip = 2)
-
-ajuda_site_map <- read_excel("~/GitHub/AjudaSiteMap/AJUDA Site Map.xlsx")
+ajuda_site_map <- read_excel("~/GitHub/AJUDA_Site_Map/AJUDA Site Map.xlsx")
 disa_site_map <- read_excel("~/GitHub/_GeneralJoins/DISA Datim Mapping.xlsx")
 
 #---- PROCESS VL DATAFRAME -------------------------------------------------------
@@ -130,7 +133,7 @@ df_tat_1 <- df_tat %>%
 df_final <- dplyr::bind_rows(df_vl_3, df_tat_1)
 
 
-#------ WRITE FILE TO DISK -------------------------------------------
+#------ WRITE MONTHLY FILE TO DISK -------------------------------------------
 
 readr::write_tsv(
   df_final,
@@ -139,7 +142,7 @@ readr::write_tsv(
 
 rm(df_final, df_tat, df_tat_1, df_vl, df_vl_1, df_vl_2, df_vl_3)
 
-#---- DEFINE PATH AND SURVEY ALL MONTHLY TPT DATASETS THAT NEED TO BE COMBINED FOR HISTORIC DATASET ---------------------------------
+#---- DEFINE PATH AND SURVEY ALL MONTHLY TPT DATASETS THAT NEED TO BE COMBINED TO CREATE HISTORIC DATASET ---------------------------------
 
 historic_files <- dir({historic_files_path}, pattern = "*.tsv")  # PATH FOR PURR TO FIND MONTHLY FILES TO COMPILE
 
@@ -182,10 +185,47 @@ disa_ajuda <- disa %>%
                 lat = Lat,
                 long = Long) %>% 
   dplyr::relocate(c(orgunituid, sisma_id, lat, long, partner), .after = site)
-  
-#------ WRITE FILE TO DISK -------------------------------------------
 
+#---- CREATE MISAU DISA DATA -------------------------------
+
+disa_misau <- disa %>%
+  dplyr::rename(periodo = month,
+                provincia = province,
+                distrito = district,
+                us = site,
+                idade = age,
+                grupo = group,
+                sexo = sex,
+                motivo = motive,
+                trl_etapa = tat_step,
+                CV = VL,
+                CVS = VLS,
+                TRL = TAT) %>% 
+  dplyr::mutate(grupo = dplyr::recode(grupo, "Age" = "Idade"),
+                grupo = dplyr::recode(grupo, "Sex" = "Sexo"),
+                grupo = dplyr::recode(grupo, "PW" = "MG"),
+                grupo = dplyr::recode(grupo, "LW" = "ML"),
+                
+                sexo = dplyr::recode(sexo, "Male" = "Masculino"),
+                sexo = dplyr::recode(sexo, "Female" = "Feminino"),
+                sexo = dplyr::recode(sexo, "Unknown" = "Desconhecido"),
+                
+                motivo = dplyr::recode(motivo, "Routine" = "Rotineiro"),
+                motivo = dplyr::recode(motivo, "Theraputic Failure" = "Falência Terapêutica"),
+                motivo = dplyr::recode(motivo, "Post Breastfeeding" = "Pós-amamentação"),
+                motivo = dplyr::recode(motivo, "Not Specified" = "Desconhecido"),
+                
+                trl_etapa = dplyr::recode(trl_etapa, "S1: Collection to Receipt" = "E1: Colheita a Chegada"),
+                trl_etapa = dplyr::recode(trl_etapa, "S2: Receipt to Registration" = "E2: Chegada a Registo"),
+                trl_etapa = dplyr::recode(trl_etapa, "S3: Registration to Analysis" = "E3: Registo a Analise"),
+                trl_etapa = dplyr::recode(trl_etapa, "S4: Analysis to Validation" = "E4: Analise a Validacao"))
+                                 
 rm(ajuda_site_map, disa_site_map, disa_vl, disa_vls)
+
+disa_datafi <- disa_misau %>% 
+  dplyr::filter(us %in% c("CS Ponta Gea", "CS Alto Mae"))
+
+#------ WRITE FILE TO DISK -------------------------------------------
 
 readr::write_tsv(
   disa,
@@ -195,6 +235,16 @@ readr::write_tsv(
 readr::write_tsv(
   disa_ajuda,
   {final_ajuda_output},
+  na ="")
+
+readr::write_tsv(
+  disa_misau,
+  {final_misau_output},
+  na ="")
+
+readr::write_tsv(
+  disa_datafi,
+  "Dataout/disa_datafi.tsv",
   na ="")
 
 

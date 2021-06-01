@@ -1,4 +1,11 @@
-data_source/
+Data/
+Images/
+AI/
+Dataout/
+GIS/
+Documents/
+Graphics/
+markdown/
 output/
 .Rproj.user
 .Rproj
