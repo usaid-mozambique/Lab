@@ -1,18 +1,13 @@
 
 #------LOAD CORE TIDYVERSE & OTHER PACKAGES-------------------------------------------
 
-library(readr)
-library(tidyr)
-library(dplyr)
-library(tibble)
-library(stringr)
-library(lubridate)
-library(janitor)
+library(tidyverse)
+library(glamr)
+library(glitr)
 library(readxl)
-library(openxlsx)
+library(janitor)
 library(glue)
-library(purrr)
-library(here)
+
 
 rm(list = ls())
 
@@ -24,39 +19,62 @@ month_output <- "Data/monthly_processsed/2021_04.tsv"
 
 #---- DEFINE PATHS AND VALUES THE DO NOT REQUIRE UPDATING -------------------------------------------------------
 
+historic_files_path <- "Data/monthly_processsed/"  # PATH USED TO CREATE A LIST OF ALL .CSV FILES PREVIOUSLY CREATED
+compile_path <- "Data/monthly_processsed/"
 final_output <- "Dataout/disa.tsv"
 final_ajuda_output <- "Dataout/disa_ajuda.tsv"
 final_misau_output <- "Dataout/disa_misau.tsv"
-historic_files_path <- "Data/monthly_processsed/"  # PATH USED TO CREATE A LIST OF ALL .CSV FILES PREVIOUSLY CREATED
-compile_path <- "Data/monthly_processsed/"
+
 
 #---- LOAD DATASETS AND UNION -------------------------------------------------------
 
-xAge <- read_excel({file_monthly}, 
-                     sheet = "S. Viral (Idade)", skip = 2) %>% 
+xAge <- read_excel({file_monthly},
+                   sheet = "S. Viral (Idade)", 
+                   col_types = c("text", "text", "text", 
+                                 "text", "text", "numeric", "numeric", 
+                                 "numeric", "numeric", "numeric", 
+                                 "numeric", "numeric", "numeric", 
+                                 "numeric", "numeric", "numeric"), 
+                   skip = 2) %>% 
   dplyr::mutate(group = "Age") %>%
-  dplyr::select(-c(`SISMA ID`)) %>% 
   glimpse()
 
 xSex <- read_excel({file_monthly}, 
-                     sheet = "S. Viral (Genero)", skip = 2) %>% 
+                   sheet = "S. Viral (Genero)",
+                   col_types = c("text", "text", "text", 
+                                 "text", "text", "numeric", "numeric", 
+                                 "numeric", "numeric", "numeric", 
+                                 "numeric", "numeric", "numeric", 
+                                 "numeric", "numeric", "numeric"), 
+                   skip = 2) %>% 
   dplyr::mutate(group = "Sex") %>% 
-  dplyr::select(-c(`SISMA ID`)) %>% 
   glimpse
 
 xPW <- read_excel({file_monthly}, 
-                   sheet = "S. Viral (M. Gravidas)", skip = 2) %>% 
+                  sheet = "S. Viral (M. Gravidas)",
+                  col_types = c("text", 
+                                "text", "text", "text", "numeric", 
+                                "numeric", "numeric", "numeric", 
+                                "numeric", "numeric", "numeric", 
+                                "numeric", "numeric", "numeric", 
+                                "numeric"), 
+                  skip = 2) %>% 
   dplyr::mutate(group = "PW") %>% 
-  dplyr::select(-c(`SISMA ID`)) %>% 
   dplyr::rename(US = HF,
                 PROVINCIA = PROVINCE,
                 DISTRITO = DISTRICT) %>% 
   glimpse
 
 xLW <- read_excel({file_monthly}, 
-                   sheet = "S. Viral (M. Lactantes)", skip = 2) %>% 
+                  sheet = "S. Viral (M. Lactantes)",
+                  col_types = c("text", 
+                                "text", "text", "text", "numeric", 
+                                "numeric", "numeric", "numeric", 
+                                "numeric", "numeric", "numeric", 
+                                "numeric", "numeric", "numeric", 
+                                "numeric"),
+                  skip = 2) %>% 
   dplyr::mutate(group = "LW") %>%
-  dplyr::select(-c(`SISMA ID`)) %>% 
   dplyr::rename(US = HF,
                 PROVINCIA = PROVINCE,
                 DISTRITO = DISTRICT) %>% 
@@ -76,7 +94,8 @@ disa_site_map <- read_excel("~/GitHub/_GeneralJoins/DISA Datim Mapping.xlsx")
 
 df_vl_1 <- df_vl %>% 
   dplyr::select(-c(`CV < 1000`, `CV > 1000`, TOTAL)) %>%
-  dplyr::rename(province = PROVINCIA,
+  dplyr::rename(sisma_id = `SISMA ID`,
+                province = PROVINCIA,
                 district = DISTRITO,
                 site = US,
                 age = Idade,
@@ -117,8 +136,9 @@ df_vl_3 <- df_vl_2 %>%
 #---- PROCESS TAT DATAFRAME -----------------------------------------------
 
 df_tat_1 <- df_tat %>% 
-  dplyr::select(9:15) %>%
-  dplyr::rename(province = PROVINCIA,
+  dplyr::select(8:15) %>%
+  dplyr::rename(sisma_id = `SISMA ID`,
+                province = PROVINCIA,
                 district = DISTRITO,
                 site = US) %>% 
   tidyr::pivot_longer((`COLHEITA À RECEPÇÃO...12`:`ANÁLISE À VALIDAÇÃO...15`), names_to = "tat_step", values_to = "value") %>% 
@@ -141,6 +161,7 @@ readr::write_tsv(
   na ="")
 
 rm(df_final, df_tat, df_tat_1, df_vl, df_vl_1, df_vl_2, df_vl_3)
+
 
 #---- DEFINE PATH AND SURVEY ALL MONTHLY TPT DATASETS THAT NEED TO BE COMBINED TO CREATE HISTORIC DATASET ---------------------------------
 
@@ -165,7 +186,7 @@ disa <- dplyr::bind_rows(disa_vl, disa_vls) %>%
   dplyr::mutate(row = row_number(),
                 tat_step = na_if(tat_step, "temp")) %>% 
   tidyr::pivot_wider(names_from = indicator, values_from = value, values_fill = NULL) %>% 
-  dplyr::group_by(month, province, district, site, age, group, sex, motive, tat_step) %>%
+  dplyr::group_by(month, province, district, site, sisma_id, age, group, sex, motive, tat_step) %>%
   summarise(VL = sum(VL, na.rm = T),
             VLS = sum(VLS, na.rm = T),
             TAT = sum(TAT, na.rm = T)) %>%
@@ -180,11 +201,13 @@ disa_ajuda <- disa %>%
   tidyr::drop_na(orgunituid) %>% 
   dplyr::select(-c(SNU,
                    Psnu,
-                   Sitename)) %>% 
+                   Sitename,
+                   sisma_id.x,
+                   sisma_id.y)) %>% 
   dplyr::rename(partner = `IP FY20`,
                 lat = Lat,
                 long = Long) %>% 
-  dplyr::relocate(c(orgunituid, sisma_id, lat, long, partner), .after = site)
+  dplyr::relocate(c(orgunituid, lat, long, partner), .after = site)
 
 #---- CREATE MISAU DISA DATA -------------------------------
 
