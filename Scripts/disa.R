@@ -13,9 +13,9 @@ rm(list = ls())
 
 #---- DEFINE PATHS AND VALUES THAT REQUIRE UPDATING EACH MONTH! -------------------------------------------------------
 
-file_monthly <- "Data/monthly/Relatorio Mensal de Carga Viral (Abril).xlsx"
-month <- "2021-04-20"
-month_output <- "Data/monthly_processsed/2021_04.tsv"
+file_monthly <- "Data/monthly/HIV VL May 2021 Data.xlsx"
+month <- "2021-05-20"
+month_output <- "Data/monthly_processsed/2021_05.tsv"
 
 #---- DEFINE PATHS AND VALUES THE DO NOT REQUIRE UPDATING -------------------------------------------------------
 
@@ -80,8 +80,13 @@ xLW <- read_excel({file_monthly},
                 DISTRITO = DISTRICT) %>% 
   glimpse
 
-df_tat <- read_excel({file_monthly},
-                     sheet = "TRL", skip = 2)
+df_tat <- read_excel({file_monthly}, 
+                      sheet = "TRL", 
+                      col_types = c("text", "numeric", "numeric", "numeric",
+                                    "numeric", "numeric", "numeric", "text", 
+                                    "text", "text", "text", "numeric",
+                                    "numeric", "numeric", "numeric", "numeric"), 
+                      skip = 2)
 
 df_vl <- dplyr::bind_rows(xAge, xSex, xPW, xLW)
 
@@ -245,9 +250,6 @@ disa_misau <- disa %>%
                                  
 rm(ajuda_site_map, disa_site_map, disa_vl, disa_vls)
 
-disa_datafi <- disa_misau %>% 
-  dplyr::filter(us %in% c("CS Ponta Gea", "CS Alto Mae"))
-
 #------ WRITE FILE TO DISK -------------------------------------------
 
 readr::write_tsv(
@@ -263,11 +265,6 @@ readr::write_tsv(
 readr::write_tsv(
   disa_misau,
   {final_misau_output},
-  na ="")
-
-readr::write_tsv(
-  disa_datafi,
-  "Dataout/disa_datafi.tsv",
   na ="")
 
 
