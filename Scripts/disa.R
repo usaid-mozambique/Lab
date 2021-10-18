@@ -11,13 +11,13 @@ library(glue)
 
 rm(list = ls())
 
-#---- DEFINE PATHS AND VALUES THAT REQUIRE UPDATING EACH MONTH! -------------------------------------------------------
+#---- DEFINE PATHS AND VALUES - REQUIREs UPDATING EACH MONTH! -------------------------------------------------------
 
-file_monthly <- "Data/monthly/HIV VL May 2021 Data.xlsx"
-month <- "2021-05-20"
-month_output <- "Data/monthly_processsed/2021_05.tsv"
+file_monthly <- "Data/monthly/Relatorio Mensal de Carga Viral (Agosto).xlsx"
+month <- "2021-08-20"
+month_output <- "Data/monthly_processsed/2021_08.tsv"
 
-#---- DEFINE PATHS AND VALUES THE DO NOT REQUIRE UPDATING -------------------------------------------------------
+#---- DEFINE PATHS AND VALUES - DO NOT REQUIRE UPDATING EACH MONTH -------------------------------------------------------
 
 historic_files_path <- "Data/monthly_processsed/"  # PATH USED TO CREATE A LIST OF ALL .CSV FILES PREVIOUSLY CREATED
 compile_path <- "Data/monthly_processsed/"
@@ -80,19 +80,19 @@ xLW <- read_excel({file_monthly},
                 DISTRITO = DISTRICT) %>% 
   glimpse
 
-df_tat <- read_excel({file_monthly}, 
-                      sheet = "TRL", 
-                      col_types = c("text", "numeric", "numeric", "numeric",
-                                    "numeric", "numeric", "numeric", "text", 
-                                    "text", "text", "text", "numeric",
-                                    "numeric", "numeric", "numeric", "numeric"), 
-                      skip = 2)
+#---- NOTE THAT THE TRL TAB OF THE VL REPORT SOMETIMES COMES WITH TWO TABLES AND TOTAL FOR FACILITY LIST.  I ELIMINATE FIRST TABLE AND TAKE TOTAL OUT TO MAKE THE FIRST MUNGE BELOW WORK ------
+
+df_tat <- read_excel({file_monthly},
+                     sheet = "TRL", col_types = c("text", 
+                                                  "text", "text", "text", "numeric", 
+                                                  "numeric", "numeric", "numeric"), 
+                  skip = 2)
 
 df_vl <- dplyr::bind_rows(xAge, xSex, xPW, xLW)
 
 rm(xAge, xSex, xPW, xLW)
 
-ajuda_site_map <- read_excel("~/GitHub/AJUDA_Site_Map/AJUDA Site Map.xlsx")
+ajuda_site_map <- read_excel("~/GitHub/AJUDA_Site_Map/Dataout/ajuda_site_map_144.xlsx")
 disa_site_map <- read_excel("~/GitHub/_GeneralJoins/DISA Datim Mapping.xlsx")
 
 #---- PROCESS VL DATAFRAME -------------------------------------------------------
@@ -141,17 +141,16 @@ df_vl_3 <- df_vl_2 %>%
 #---- PROCESS TAT DATAFRAME -----------------------------------------------
 
 df_tat_1 <- df_tat %>% 
-  dplyr::select(8:15) %>%
   dplyr::rename(sisma_id = `SISMA ID`,
                 province = PROVINCIA,
                 district = DISTRITO,
                 site = US) %>% 
-  tidyr::pivot_longer((`COLHEITA À RECEPÇÃO...12`:`ANÁLISE À VALIDAÇÃO...15`), names_to = "tat_step", values_to = "value") %>% 
+  tidyr::pivot_longer((`COLHEITA À RECEPÇÃO`:`ANÁLISE À VALIDAÇÃO`), names_to = "tat_step", values_to = "value") %>% 
   dplyr::mutate(tat_step = dplyr::recode(tat_step, 
-                                         "COLHEITA À RECEPÇÃO...12" = "S1: Collection to Receipt",
-                                         "RECEPÇÃO AO REGISTO...13" = "S2: Receipt to Registration",
-                                         "REGISTO À ANÁLISE...14" = "S3: Registration to Analysis",
-                                         "ANÁLISE À VALIDAÇÃO...15" = "S4: Analysis to Validation"),
+                                         "COLHEITA À RECEPÇÃO" = "S1: Collection to Receipt",
+                                         "RECEPÇÃO AO REGISTO" = "S2: Receipt to Registration",
+                                         "REGISTO À ANÁLISE" = "S3: Registration to Analysis",
+                                         "ANÁLISE À VALIDAÇÃO" = "S4: Analysis to Validation"),
                 indicator = "TAT",
                 month = {month})
 
